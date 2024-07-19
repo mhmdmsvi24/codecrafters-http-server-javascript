@@ -5,17 +5,24 @@ const server = net.createServer((socket) => {
 
   socket.on("data", (data) => {
     const requestString = data.toString();
-    console.log("Request received:\n", requestString);
+    const [requestLine, ...headers] = requestString.split("\r\n");
+    const [method, url] = requestLine.split(" ");
 
-    // Parse the request
-    const [requestLine] = requestString.split("\r\n");
-    const url = requestLine.split(" ")[1];
-
-    // Check if it's a GET request to /echo/
-    if (url == "/") {
+    // endpoint /
+    if (url === "/") {
       socket.write("HTTP/1.1 200 OK\r\n\r\n");
-    } else if (url.includes("/echo/")) {
-      const content = url.split("/echo/")[1];
+      // endpoint /echo/
+    } else if (url.startsWith("/echo/")) {
+      const content = url.slice(6); // Remove '/echo/' from the beginning
+      socket.write(
+        `HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: ${content.length}\r\n\r\n${content}`
+      );
+      // endpoint /user-agent
+    } else if (url === "/user-agent") {
+      const userAgent = headers.find((h) =>
+        h.toLowerCase().startsWith("user-agent:")
+      );
+      const content = userAgent ? userAgent.split(": ")[1] : "";
       socket.write(
         `HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: ${content.length}\r\n\r\n${content}`
       );
@@ -23,7 +30,7 @@ const server = net.createServer((socket) => {
       socket.write("HTTP/1.1 404 Not Found\r\n\r\n");
     }
 
-    socket.end(); // Close the connection
+    socket.end();
   });
 
   socket.on("error", (err) => {
